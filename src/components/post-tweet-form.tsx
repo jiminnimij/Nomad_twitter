@@ -1,7 +1,8 @@
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, updateDoc } from "firebase/firestore";
 import React, { useState } from "react";
 import { styled } from "styled-components";
-import { auth, db } from "../firebase";
+import { auth, db, storage } from "../firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 const Form = styled.form`
   display: flex;
@@ -50,7 +51,7 @@ const SubmitBtn = styled.input`
   border-radius: 20px;
   font-size: 16px;
   cursor: pointer;
-  &: hover,
+  &:hover,
   &:active {
     opacity: 0.9;
   }
@@ -78,12 +79,22 @@ export default function PostTweetForm() {
     if(!user ||isLoading || tweet === "" || tweet.length > 180) return;
     try {
       setLoading(true);
-      await addDoc(collection(db, "tweets"), {
+      const doc = await addDoc(collection(db, "tweets"), {
         tweet,
         createdAt: Date.now(),
         username: user.displayName || "Anonymous",
         userId: user.uid,
-      })
+      });
+      if (file) {
+        const locationRef = ref(storage, `tweets/${user.uid}-${user.displayName}/${doc.id}`);
+        const result = await uploadBytes(locationRef, file);
+        const url = await getDownloadURL(result.ref);
+        await updateDoc(doc, {
+          photo: url,
+        });
+      }
+      setTweet("");
+      setFile(null);
     } catch(e) {
       console.log(e);
     } finally {
@@ -94,6 +105,7 @@ export default function PostTweetForm() {
   return (
     <Form onSubmit={onSubmit}>
       <TextArea
+        required
         rows={5}
         maxLength={180}
         onChange={onChange}
@@ -107,7 +119,7 @@ export default function PostTweetForm() {
         id="file" 
         accept="image/*" 
       />
-      <SubmitBtn type="submit" value={isLoading ? "Posting" : "Post Tweet"} />
+      <SubmitBtn type="submit" value={isLoading ? "Posting..." : "Post Tweet"} />
     </Form>
   )
 }

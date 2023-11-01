@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { styled } from "styled-components";
 import { auth, db, storage } from "../firebase";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { Error } from "./auth-components";
+
+const FILE_SIZE_MAX_LIMIT = 1 * 1024 * 1024;
 
 const Form = styled.form`
   display: flex;
@@ -67,9 +70,14 @@ export default function PostTweetForm() {
   };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {files} = e.target;
+    const { files } = e.target;
+    
     if(files && files.length === 1) {
-      setFile(files[0]);
+      if (files[0]?.size > FILE_SIZE_MAX_LIMIT) {
+        alert("You can't upload a file larger than 1MB.");
+      } else {
+        setFile(files[0]);
+      }
     }
   };
 
